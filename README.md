@@ -264,5 +264,3 @@ Audit Logging
 This project is licensed under the MIT License.
 
 ---
-
-https://github.com/nitinc264/Smart-Invoice-Reimbursement-Extractor

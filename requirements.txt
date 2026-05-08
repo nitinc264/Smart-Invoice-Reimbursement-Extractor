@@ -1,0 +1,9 @@
+streamlit
+pandas
+openpyxl  #Primary Database
+pytesseract
+easyocr
+google-generativeai
+pillow
+numpy
+pymupdf

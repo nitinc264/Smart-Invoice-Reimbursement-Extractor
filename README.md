@@ -234,21 +234,6 @@ Audit Logging
 
 ---
 
-## 🎯 Problem Statement
-
-This project was developed as part of a technical assessment focused on automating reimbursement workflows.
-
-### Objective
-
-Build an intelligent invoice extraction system capable of:
-
-- Extracting 12+ invoice fields
-- Handling multiple invoice formats
-- Processing noisy OCR outputs
-- Maintaining structured reimbursement records
-- Supporting human validation workflows
-
----
 
 ## 🧪 Sample Use Cases
 
@@ -274,27 +259,10 @@ Build an intelligent invoice extraction system capable of:
 
 ---
 
-## 🤝 Contributing
-
-Contributions, suggestions, and improvements are welcome.
-
-1. Fork the repository
-2. Create a new branch
-3. Commit your changes
-4. Open a pull request
-
----
-
 ## 📄 License
 
 This project is licensed under the MIT License.
 
 ---
-
-## 👨‍💻 Author
-
-Developed by **Nitin Chauhan**
-
-GitHub Repository:
 
 https://github.com/nitinc264/Smart-Invoice-Reimbursement-Extractor

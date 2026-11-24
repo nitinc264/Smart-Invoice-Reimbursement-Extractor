@@ -42,20 +42,26 @@ def _build_review_map(extracted: Dict[str, Any]) -> Dict[str, bool]:
     return {field: field in review_fields for field, _ in FIELD_LABELS}
 
 
+use_easyocr = st.checkbox("Enable EasyOCR comparison (slower, high RAM)", value=False)
 uploaded_file = st.file_uploader("Upload invoice file", type=["pdf", "jpg", "jpeg", "png"])
 
 if uploaded_file:
     file_name = uploaded_file.name
 
-    if "ocr_result" not in st.session_state or st.session_state.get("uploaded_name") != file_name:
+    if (
+        "ocr_result" not in st.session_state
+        or st.session_state.get("uploaded_name") != file_name
+        or st.session_state.get("used_easyocr") != use_easyocr
+    ):
         try:
             with st.spinner("Running OCR comparison..."):
-                tesseract_text, easyocr_text, accuracy_report = run_ocr_comparison(uploaded_file)
+                tesseract_text, easyocr_text, accuracy_report = run_ocr_comparison(uploaded_file, use_easyocr=use_easyocr)
 
             with st.spinner("Cleaning OCR output with Gemini..."):
                 extracted_data = clean_with_llm(tesseract_text, easyocr_text)
 
             st.session_state["uploaded_name"] = file_name
+            st.session_state["used_easyocr"] = use_easyocr
             st.session_state["ocr_result"] = {
                 "tesseract_text": tesseract_text,
                 "easyocr_text": easyocr_text,
@@ -129,6 +135,7 @@ if uploaded_file:
             if clear_clicked:
                 st.session_state.pop("ocr_result", None)
                 st.session_state.pop("uploaded_name", None)
+                st.session_state.pop("used_easyocr", None)
                 st.success("Form cleared. Ready for next upload.")
                 st.rerun()
 
@@ -174,6 +181,7 @@ if uploaded_file:
                         st.info("📝 Manual corrections were logged for this upload.")
                     st.session_state.pop("ocr_result", None)
                     st.session_state.pop("uploaded_name", None)
+                    st.session_state.pop("used_easyocr", None)
                 else:
                     if "Duplicate" in message:
                         st.warning("⚠️ " + message)

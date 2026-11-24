@@ -2,20 +2,25 @@ from __future__ import annotations
 
 import io
 import os
-from functools import lru_cache
+import shutil
 from statistics import mean
 from typing import List, Tuple
 
 import pytesseract
+import streamlit as st
 from PIL import Image, ImageFilter, ImageOps
-
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 if os.getenv("TESSERACT_CMD"):
     pytesseract.pytesseract.tesseract_cmd = os.getenv("TESSERACT_CMD", "")
+elif os.name == "nt":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+else:
+    tesseract_path = shutil.which("tesseract")
+    if tesseract_path:
+        pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
 
-@lru_cache(maxsize=1)
+@st.cache_resource
 def _get_easyocr_reader():
     import easyocr
 
@@ -38,9 +43,12 @@ def _load_images(uploaded_file) -> List[Image.Image]:
 
     if filename.endswith(".pdf") or data[:4] == b"%PDF":
         try:
-            import fitz
-        except Exception as exc:  # pragma: no cover - optional dependency
-            raise RuntimeError("PDF upload detected, but PyMuPDF is not installed.") from exc
+            import pymupdf as fitz
+        except Exception:
+            try:
+                import fitz
+            except Exception as exc:  # pragma: no cover - optional dependency
+                raise RuntimeError("PDF upload detected, but PyMuPDF is not installed.") from exc
         document = fitz.open(stream=data, filetype="pdf")
         images: List[Image.Image] = []
         for page in document:
@@ -67,7 +75,7 @@ def _preprocess_image(image: Image.Image) -> Image.Image:
 
 def _ocr_tesseract(image: Image.Image) -> Tuple[str, List[float]]:
     from utils import log_exception
-    
+
     try:
         text = pytesseract.image_to_string(image, config="--oem 3 --psm 6")
         confidence_values: List[float] = []
@@ -105,7 +113,7 @@ def _ocr_easyocr(image: Image.Image) -> Tuple[str, List[float]]:
     return " ".join(text_parts).strip(), confidence_values
 
 
-def run_ocr_comparison(uploaded_file):
+def run_ocr_comparison(uploaded_file, use_easyocr: bool = False):
     images = _load_images(uploaded_file)
     tesseract_pages: List[str] = []
     easyocr_pages: List[str] = []
@@ -115,13 +123,15 @@ def run_ocr_comparison(uploaded_file):
     for image in images:
         processed = _preprocess_image(image)
         tesseract_text, tesseract_confidences = _ocr_tesseract(processed)
-        easyocr_text, easyocr_confidences = _ocr_easyocr(processed)
         if tesseract_text:
             tesseract_pages.append(tesseract_text)
-        if easyocr_text:
-            easyocr_pages.append(easyocr_text)
         tesseract_confidence_values.extend(tesseract_confidences)
-        easyocr_confidence_values.extend(easyocr_confidences)
+
+        if use_easyocr:
+            easyocr_text, easyocr_confidences = _ocr_easyocr(processed)
+            if easyocr_text:
+                easyocr_pages.append(easyocr_text)
+            easyocr_confidence_values.extend(easyocr_confidences)
 
     tesseract_raw = "\n\n".join(tesseract_pages).strip()
     easyocr_raw = "\n\n".join(easyocr_pages).strip()
@@ -135,7 +145,7 @@ def run_ocr_comparison(uploaded_file):
         "easyocr_character_count": len(easyocr_raw),
         "tesseract_mean_confidence": round(mean(tesseract_confidence_values), 2) if tesseract_confidence_values else None,
         "easyocr_mean_confidence": round(mean(easyocr_confidence_values), 2) if easyocr_confidence_values else None,
-        "recommended_engine": "easyocr" if easyocr_score >= tesseract_score else "tesseract",
+        "recommended_engine": "easyocr" if (use_easyocr and easyocr_score >= tesseract_score) else "tesseract",
         "notes": "OCR was run on preprocessed page images to improve results on scans and mobile photos.",
     }
 
